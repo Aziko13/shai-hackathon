@@ -49,3 +49,9 @@ wheels/
 *.egg
 # Plots and htmls
 static/
+
+data/
+*.db
+# large DB files
+*.db
+*.sqlite
