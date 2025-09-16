@@ -42,7 +42,6 @@ DB_PATH = os.getenv(
 
 
 def get_db_conn():
-    print(">> Using DB:", DB_PATH)
     return sqlite3.connect(DB_PATH)
 
 

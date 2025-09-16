@@ -14,24 +14,19 @@ from langsmith import testing as t
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.store.memory import InMemoryStore
 from langgraph.types import Command
-
+import os
 from dotenv import load_dotenv
 
 load_dotenv(".env", override=True)
 
 
-import sys
-
-
-sys.path.append("/Users/aziz/Documents/repos/restaurant-bot/src/restaurant_agent")
+sys.path.append("/Users/aziz/Documents/repos/shai-hackathon")
 import evaluation_obs as e
-import agent
-import prompts
-import config
-import pytest
-from typing import List, Any
-from langsmith import testing as t
+import app.agent as agent
+import app.prompts as prompts
 
+
+graph = agent.build_agent_with_router()
 
 def format_messages_string(messages: List[Any]) -> str:
     """Format messages into a single string for analysis."""
@@ -43,10 +38,6 @@ class CriteriaGrade(BaseModel):
 
     grade: bool = Field(description="Does the response meet the provided criteria?")
     justification: str = Field(description="The justification for the grade and score")
-
-
-criteria_eval_llm = init_chat_model(config.EVALUATOR_MODEL)
-criteria_eval_structured_llm = criteria_eval_llm.with_structured_output(CriteriaGrade)
 
 
 def create_response_test_cases():
@@ -61,26 +52,40 @@ def create_response_test_cases():
     print(f"Created {len(test_cases)} test cases")
     return test_cases
 
+# Агент
+# agent_model = os.getenv("AGENT_MODEL")
+# agent_api_base = os.getenv("AGENT_API_BASE")
+# agent_api_key = os.getenv("AGENT_API_KEY")
+# agent_llm = init_chat_model(
+#     agent_model,
+#     openai_api_base=agent_api_base,
+#     openai_api_key=agent_api_key,
+# )
+
+# Оценщик
+evaluator_model = os.getenv("EVALUATOR_MODEL")
+evaluator_api_base = os.getenv("EVALUATOR_API_BASE")
+evaluator_api_key = os.getenv("EVALUATOR_API_KEY")
+criteria_eval_llm = init_chat_model(
+    evaluator_model,
+    openai_api_base=evaluator_api_base,
+    openai_api_key=evaluator_api_key,
+)
+criteria_eval_structured_llm = criteria_eval_llm.with_structured_output(CriteriaGrade)
 
 @pytest.mark.langsmith(output_keys=["criteria"])
-# Variable names and a list of tuples with the test cases
-# Each test case is (req, success_criteria)
 @pytest.mark.parametrize("req, success_criteria", create_response_test_cases())
 def test_response_criteria_evaluation(req, success_criteria):
     """Test if a response meets the specified criteria."""
-    # Log minimal inputs for LangSmith
     t.log_inputs({"module": "agent e2e", "test": "test_response_criteria_evaluation"})
 
-    # Set up the assistant
-    email_assistant = agent.app
 
     # Run the agent
     msg = {"messages": [{"role": "user", "content": req}]}
     config = {"configurable": {"thread_id": str(req)}}
-    result = agent.app.invoke(msg, config)
+    result = graph.invoke(msg, config)
     all_messages_str = format_messages_string(result["messages"])
 
-    # Evaluate against criteria
     eval_result = criteria_eval_structured_llm.invoke(
         [
             {"role": "system", "content": prompts.RESPONSE_CRITERIA_SYSTEM_PROMPT},
@@ -91,7 +96,6 @@ def test_response_criteria_evaluation(req, success_criteria):
         ]
     )
 
-    # Log feedback response
     t.log_outputs(
         {
             "justification": eval_result.justification,
@@ -99,8 +103,7 @@ def test_response_criteria_evaluation(req, success_criteria):
         }
     )
 
-    # Pass feedback key
     assert eval_result.grade
 
 
-# LANGSMITH_TEST_SUITE='Kese assistant: Test e2e' pytest tests/test_e2e.py
+# LANGSMITH_TEST_SUITE='SHAI / DSK assistant: Test e2e' pytest tests/test_e2e.py
