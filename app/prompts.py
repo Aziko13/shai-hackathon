@@ -77,7 +77,7 @@ A:
 {{
   "decision": "tool",
   "next_tool": "execute_query",
-  "tool_args": {{"sql": "SELECT sku_id, SUM(sales_tg) as total_sales FROM fact_sales WHERE order_date >= date('now', '-30 days') GROUP BY sku_id ORDER BY total_sales DESC LIMIT 5"}},
+  "tool_args": {{"sql": "SELECT sku_id, SUM(sales_tg) as total_sales FROM fact_sales WHERE order_date >= date('2025-09-14', '-30 days') GROUP BY sku_id ORDER BY total_sales DESC LIMIT 5"}},
   "tool_call_id": "call_1"
 }}
 
@@ -97,11 +97,7 @@ A:
   "tool_call_id": "call_1"
 }}
 
-Q: "Now summarize everything we know so far"
-A:
-{{
-  "decision": "final"
-}}
+
 
 Rules:
 - JSON only, no markdown, no extra text.

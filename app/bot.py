@@ -82,7 +82,7 @@ async def send_images(
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привет! Могу омочь с анализом данных по магазинам.\n"
+        "Привет! Могу помочь с анализом данных по магазинам.\n"
     )
 
 
