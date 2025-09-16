@@ -2,7 +2,7 @@ req_1 = "Какие продажи были 5-го июня 2025?"
 req_2 = "Сделай прогноз продаж на следующие 7 дней"
 req_3 = "Покажи топ-3 продукта по суммам продаж за последнюю неделю"
 req_4 = "Покажи топ-3 продукта по количеству продаж за последнюю неделю"
-        
+
 criteria_1 = """
 • Assistant checks whether sales exist for the requested date using an SQL query.
 • If no sales exist, assistant explicitly states there are no sales records for that date.
@@ -37,7 +37,6 @@ criteria_4 = """
 """
 
 
-
 tool_req_1 = "Какие таблицы есть в БД?"
 tool_req_2 = "Какая структуцра у таблицы с прогнозами?"
 tool_req_3 = "Какая последняя дата с таблице с прогнозами?"
@@ -47,7 +46,12 @@ tool_req_4 = "Сделай прогноз на следующие 5 дней"
 tool_call_1 = ["list_tables"]
 tool_call_2 = ["list_tables", "describe_table"]
 tool_call_3 = ["list_tables", "describe_table", "execute_query"]
-tool_call_4 = ["get_current_date", "list_tables", "describe_table", "daily_forecast_from_db"]
+tool_call_4 = [
+    "get_current_date",
+    "list_tables",
+    "describe_table",
+    "daily_forecast_from_db",
+]
 
 
 reqsuests = [
@@ -72,9 +76,4 @@ tool_requests = [
     tool_req_4,
 ]
 
-expected_tool_calls = [
-    tool_call_1,
-    tool_call_2,
-    tool_call_3,
-    tool_call_4
-]
+expected_tool_calls = [tool_call_1, tool_call_2, tool_call_3, tool_call_4]

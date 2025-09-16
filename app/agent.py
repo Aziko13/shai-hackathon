@@ -1,7 +1,7 @@
 import json
 import re
 from typing import TypedDict, Optional, List, Dict, Any
-import os 
+import os
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
 from dotenv import load_dotenv
@@ -14,14 +14,12 @@ from langchain_core.messages import (
     ToolMessage,
     BaseMessage,
     SystemMessage,
-
 )
 from langchain.chat_models import init_chat_model
 import app.tools as tools
 import app.prompts as prompts
 
 load_dotenv()
-
 
 
 def _get_role(m: Any) -> Optional[str]:
@@ -117,9 +115,11 @@ class TruncatingInMemorySaver(InMemorySaver):
                 values["messages"] = msgs
                 checkpoint["values"] = values
 
+
 # ----------------------------------------------------------
 
 AGENT_MODEL = os.getenv("AGENT_MODEL", "openai:llama4scout")
+
 
 class AgentState(TypedDict):
     # messages: List[BaseMessage] # List of messages
@@ -127,6 +127,7 @@ class AgentState(TypedDict):
     next_tool: Optional[str]
     tool_args: Optional[dict]
     final_answer_ready: bool
+
 
 LLM_ROUTER_PROMPT = prompts.LLM_ROUTER_PROMPT
 FINAL_ANSWER_PROMPT = prompts.FINAL_ANSWER_PROMPT
@@ -136,7 +137,11 @@ FINAL_ANSWER_PROMPT = prompts.FINAL_ANSWER_PROMPT
 TOOL_REGISTRY = prompts.TOOL_REGISTRY
 
 # ---- МОДЕЛИ
-llm = init_chat_model(AGENT_MODEL, temperature=0, model_kwargs={"response_format": {"type": "json_object"}})
+llm = init_chat_model(
+    AGENT_MODEL,
+    temperature=0,
+    model_kwargs={"response_format": {"type": "json_object"}},
+)
 llm_final_answer = init_chat_model(AGENT_MODEL, temperature=0)
 
 
@@ -157,7 +162,9 @@ def llm_router(state: AgentState) -> AgentState:
     try:
         parsed = json.loads(json_str)
     except Exception as e:
-        raise ValueError(f"Router must return strict JSON. Parse error: {e}\nRaw:\n{content}")
+        raise ValueError(
+            f"Router must return strict JSON. Parse error: {e}\nRaw:\n{content}"
+        )
 
     decision = parsed.get("decision", "").strip().lower()
     if decision == "final":
@@ -173,15 +180,14 @@ def llm_router(state: AgentState) -> AgentState:
 
     next_tool: str = parsed["next_tool"]
     tool_args: dict = parsed.get("tool_args", {}) or {}
-    tool_call_id = str(parsed.get("tool_call_id") or f"call_{int(time.time()*1000)}_{random.randint(1000,9999)}")
+    tool_call_id = str(
+        parsed.get("tool_call_id")
+        or f"call_{int(time.time()*1000)}_{random.randint(1000,9999)}"
+    )
 
     ai_with_tool_call = AIMessage(
         content="",
-        tool_calls=[{
-            "id": tool_call_id,
-            "name": next_tool,
-            "args": tool_args
-        }]
+        tool_calls=[{"id": tool_call_id, "name": next_tool, "args": tool_args}],
     )
 
     return {
@@ -192,13 +198,14 @@ def llm_router(state: AgentState) -> AgentState:
     }
 
 
-
 def tool_executor(state: AgentState) -> AgentState:
     last_msg = state["messages"][-1]
     if not isinstance(last_msg, AIMessage) or not getattr(last_msg, "tool_calls", None):
         # Это логическая ошибка в графе: tool_executor должен вызываться
         # только после решения роутера "decision: tool".
-        raise ValueError("tool_executor: expected AIMessage with tool_calls from router")
+        raise ValueError(
+            "tool_executor: expected AIMessage with tool_calls from router"
+        )
 
     tool_outputs: List[ToolMessage] = []
     # Переход в финал теперь РЕШАЕТСЯ ТОЛЬКО роутером, поэтому всегда False
@@ -233,7 +240,7 @@ def tool_executor(state: AgentState) -> AgentState:
         "messages": tool_outputs,
         "next_tool": None,
         "tool_args": None,
-        "final_answer_ready": final_answer_ready, 
+        "final_answer_ready": final_answer_ready,
     }
 
 
@@ -246,10 +253,7 @@ def final_answer_node(state: AgentState) -> AgentState:
     msgs.insert(0, system_msg_final)
 
     response: AIMessage = llm_final_answer.invoke(msgs)
-    return {
-        **state,
-        "messages": [response]
-    }
+    return {**state, "messages": [response]}
 
 
 def build_agent_with_router():
@@ -260,10 +264,14 @@ def build_agent_with_router():
     workflow.add_node("final_answer", final_answer_node)
 
     workflow.add_edge(START, "llm_router")
-    workflow.add_conditional_edges("llm_router", route, {
-        "tool_executor": "tool_executor",
-        "final_answer": "final_answer",
-    })
+    workflow.add_conditional_edges(
+        "llm_router",
+        route,
+        {
+            "tool_executor": "tool_executor",
+            "final_answer": "final_answer",
+        },
+    )
     workflow.add_edge("tool_executor", "llm_router")
     workflow.add_edge("final_answer", END)
 
