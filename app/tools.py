@@ -36,7 +36,9 @@ else:
 import matplotlib.pyplot as plt
 import sqlite3
 
-DB_PATH = os.getenv("DB_PATH", "/Users/aziz/Documents/repos/shai-hackathon/data/data.db")
+DB_PATH = os.getenv(
+    "DB_PATH", "/Users/aziz/Documents/repos/shai-hackathon/data/data.db"
+)
 
 
 def get_db_conn():
@@ -47,20 +49,21 @@ def get_db_conn():
 def get_current_date() -> str:
     """Returns the current date in YYYY-MM-DD format."""
     print(" - TOOL CALL: get_current_date()")
-    return "2025-09-14" # datetime.now().strftime("%Y-%m-%d")
+    return "2025-09-14"  # datetime.now().strftime("%Y-%m-%d")
 
 
 def list_tables() -> List[str]:
     """Returns the names of all tables in the DB."""
-    print(' - TOOL CALL: list_tables()')
+    print(" - TOOL CALL: list_tables()")
     with get_db_conn() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         return [t[0] for t in cursor.fetchall()]
 
+
 def describe_table(table_name: str) -> List[tuple[str, str]]:
     """For a given table name returns its schema."""
-    print(f' - TOOL CALL: describe_table({table_name})')
+    print(f" - TOOL CALL: describe_table({table_name})")
     with get_db_conn() as conn:
         cursor = conn.cursor()
         cursor.execute(f"PRAGMA table_info({table_name});")
@@ -69,7 +72,7 @@ def describe_table(table_name: str) -> List[tuple[str, str]]:
 
 def execute_query(sql: str) -> List[list[str]]:
     """Executes an SQL query and returns the result."""
-    print(f' - TOOL CALL: execute_query({sql})')
+    print(f" - TOOL CALL: execute_query({sql})")
 
     conn = get_db_conn()
     df = pd.read_sql_query(sql, conn)
@@ -83,7 +86,6 @@ def execute_query(sql: str) -> List[list[str]]:
     return "".join(stats) + f"\n{preview}\n"
 
 
-
 def give_column_summary(handle_id: str, col_name: str) -> str:
     """
     Returns a summary of the column in a dataframe.
@@ -93,7 +95,7 @@ def give_column_summary(handle_id: str, col_name: str) -> str:
     Returns:
         A summary of the column.
     """
-    print(f' - TOOL CALL: give_column_summary({handle_id}, {col_name})')
+    print(f" - TOOL CALL: give_column_summary({handle_id}, {col_name})")
 
     df = ARTIFACTS.get(handle_id)
     if col_name not in df.columns:
@@ -105,9 +107,16 @@ def give_column_summary(handle_id: str, col_name: str) -> str:
     summary = df[col_name].describe()
 
     return f"summary: {summary}"
-    
 
-def make_simple_plot(handle: str, x_col: str, y_col: str, x_vertical: str = None, title: str = "Plot", plot_type: str = "bar") -> str:
+
+def make_simple_plot(
+    handle: str,
+    x_col: str,
+    y_col: str,
+    x_vertical: str = None,
+    title: str = "Plot",
+    plot_type: str = "bar",
+) -> str:
     """
     Returns a path to a bar/line plot of metric "y" by categories "x"
     Args:
@@ -117,10 +126,12 @@ def make_simple_plot(handle: str, x_col: str, y_col: str, x_vertical: str = None
         title: str - title of the plot
         plot_type: str - plot type, should be one of ["bar", "line"]
         x_vertical: str - x vertical line to plot, if plot_type is "line" then x_vertical is the date to plot. Can be used to highlight forecasts.
-    Returns: 
+    Returns:
         String with absolute path to saved PNG
     """
-    print(f' - TOOL CALL: make_simple_plot({handle}, {x_col}, {y_col}, {title}, {plot_type}, {x_vertical})')
+    print(
+        f" - TOOL CALL: make_simple_plot({handle}, {x_col}, {y_col}, {title}, {plot_type}, {x_vertical})"
+    )
     out_dir = os.getenv("PLOTS_DIR", "data/plots")
     os.makedirs(out_dir, exist_ok=True)
     fname = f"{plot_type}_plot_{x_col}_{y_col}.png"
@@ -130,10 +141,10 @@ def make_simple_plot(handle: str, x_col: str, y_col: str, x_vertical: str = None
     if df is None or df.empty:
         return "Artifact not found or empty/expired."
 
-    plt.figure(figsize=(8,5))
+    plt.figure(figsize=(8, 5))
     df.plot(kind=plot_type, x=x_col, y=y_col, legend=False, color=plt.cm.Pastel1.colors)
     if x_vertical is not None:
-        plt.axvline(x=x_vertical, color='red', linestyle='--')
+        plt.axvline(x=x_vertical, color="red", linestyle="--")
     plt.ylabel(y_col)
     plt.title(title)
     plt.xticks(rotation=45, ha="right")
@@ -143,4 +154,3 @@ def make_simple_plot(handle: str, x_col: str, y_col: str, x_vertical: str = None
     img_path = os.path.abspath(path)
 
     return f"Image path: {img_path}"
-
