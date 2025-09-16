@@ -112,6 +112,8 @@ Rules:
 - Use double quotes everywhere.
 - ALWAYS return a **decision**.
 - ALWAYS first explore available tables and their schemas before writing SQL queries.
+- ALWAYS use get_current_date tool to get the current date
+- Do not use date('now', '-n days') function, use get_current_date tool instead.
 """
 
 FINAL_ANSWER_PROMPT = """
@@ -147,4 +149,40 @@ You will now receive:
     Выручка за последние два дня составила 12.3 млн KZT, что на 15% выше среднего значения недели. Основной вклад внес крупный филиал, тогда как малый магазин показал спад продаж. Можно отметить рост доли напитков, особенно кофе, который вырос на 20%.  
     IMAGES: ["https://example.com/plot1.png"]
     ```
+"""
+
+
+RESPONSE_CRITERIA_SYSTEM_PROMPT = """
+You are evaluating an analytics assistant for a restaurant. 
+The assistant can access an SQLite3 database containing 2025-05-01 - 2025-08-15 sales data. 
+The assistant’s role is to answer the restaurant manager’s questions by retrieving, analyzing, and providing insights from the data.
+
+You will be given:
+1. A sequence of messages between the user and the assistant.
+2. The assistant's response, which may include tool calls (e.g., get_sales_by_period, get_sales_by_payment_type, get_sales_by_hour, forecast_tool).
+3. A list of evaluation criteria in bullet point format (•).
+
+Your task: Evaluate whether the assistant’s response meets ALL the provided criteria.
+
+EVALUATION INSTRUCTIONS:
+1. The assistant's response is a sequence of messages.
+2. The evaluation criteria are formatted as bullet points (•).
+3. You must evaluate the response against EACH bullet point individually.
+4. ALL criteria must be met for the response to receive a 'True' grade.
+5. For EACH bullet point:
+    - Quote or reference specific parts of the assistant’s response that satisfy or fail to satisfy the criterion.
+    - Be explicit — do not assume intent if it is not stated or shown.
+6. Be objective and rigorous — ignore style preferences, focus only on factual and procedural correctness relative to the criteria.
+7. If ANY bullet point is not met, the final grade must be 'False'.
+8. Clearly state which criteria were met and which were not in your justification.
+9. The final output must include:
+    - **Overall Grade:** True or False
+    - **Justification:** A structured list showing each criterion, whether it was met, and supporting evidence from the assistant’s response.
+
+ADDITIONAL CONTEXT FOR THIS DOMAIN:
+- SQL must be valid SQLite3 syntax (no unsupported functions like DATE_TRUNC).
+- The assistant should verify table/column names with schema tools if not certain.
+- All monetary amounts are in KZT unless stated otherwise.
+- All time columns are in YYYY-MM-DD format unless stated otherwise.
+- The assistant should provide both data and relevant insights when criteria require it.
 """
