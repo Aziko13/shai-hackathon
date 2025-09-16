@@ -120,6 +120,7 @@ def make_simple_plot(handle: str, x_col: str, y_col: str, x_vertical: str = None
     Returns: 
         String with absolute path to saved PNG
     """
+    print(f' - TOOL CALL: make_simple_plot({handle}, {x_col}, {y_col}, {title}, {plot_type}, {x_vertical})')
     out_dir = os.getenv("PLOTS_DIR", "data/plots")
     os.makedirs(out_dir, exist_ok=True)
     fname = f"{plot_type}_plot_{x_col}_{y_col}.png"
