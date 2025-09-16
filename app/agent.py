@@ -5,6 +5,9 @@ import os
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
 from dotenv import load_dotenv
+import json, re, time, random
+from typing import Annotated, Sequence
+from langgraph.graph.message import add_messages
 
 from langchain_core.messages import (
     AIMessage,
@@ -119,7 +122,8 @@ class TruncatingInMemorySaver(InMemorySaver):
 AGENT_MODEL = os.getenv("AGENT_MODEL", "openai:llama4scout")
 
 class AgentState(TypedDict):
-    messages: List[BaseMessage] # List of messages
+    # messages: List[BaseMessage] # List of messages
+    messages: Annotated[Sequence[BaseMessage], add_messages]
     next_tool: Optional[str]
     tool_args: Optional[dict]
     final_answer_ready: bool
@@ -129,17 +133,10 @@ FINAL_ANSWER_PROMPT = prompts.FINAL_ANSWER_PROMPT
 
 
 # ---- РЕЕСТР ТУЛОВ (важно: ключ = имя в JSON от роутера)
-TOOL_REGISTRY: Dict[str, Any] = {
-    "get_current_date": tools.get_current_date,
-    "list_tables": tools.list_tables,
-    "describe_table": tools.describe_table,
-    "execute_query": tools.execute_query,
-    "give_column_summary": tools.give_column_summary,
-    "make_simple_plot": tools.make_simple_plot,
-}
+TOOL_REGISTRY = prompts.TOOL_REGISTRY
 
 # ---- МОДЕЛИ
-llm = init_chat_model(AGENT_MODEL, temperature=0)
+llm = init_chat_model(AGENT_MODEL, temperature=0, model_kwargs={"response_format": {"type": "json_object"}})
 llm_final_answer = init_chat_model(AGENT_MODEL, temperature=0)
 
 
@@ -147,58 +144,36 @@ system_msg_router = SystemMessage(content=LLM_ROUTER_PROMPT)
 system_msg_final = SystemMessage(content=FINAL_ANSWER_PROMPT)
 
 
-
 def llm_router(state: AgentState) -> AgentState:
-
     msgs = [m for m in state["messages"] if not isinstance(m, SystemMessage)]
     msgs.insert(0, system_msg_router)
 
     response: AIMessage = llm.invoke(msgs)
+    content = (response.content or "").strip()
+
+    m = re.search(r"\{.*\}", content, flags=re.DOTALL)
+    json_str = m.group(0) if m else content
 
     try:
-        # Clean up the response content to handle common JSON issues
-        content = response.content.strip()
-        
-        # Extract JSON from the response (look for JSON object)
-        json_match = re.search(r'\{.*\}', content, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(0)
-        else:
-            json_str = content
-        
-        # Replace Python None with JSON null
-        json_str = json_str.replace("None", "null")
-        
-        # Try to parse the JSON
         parsed = json.loads(json_str)
-        next_tool = (parsed.get("next_tool") or "").strip()
-        tool_args_raw = parsed.get("tool_args", {})
-        
-        # Ensure tool_args is always a dictionary
-        if isinstance(tool_args_raw, dict):
-            tool_args = tool_args_raw
-        elif isinstance(tool_args_raw, str):
-            # If it's a string, try to parse it as JSON or create empty dict
-            try:
-                tool_args = json.loads(tool_args_raw) if tool_args_raw.strip() else {}
-            except json.JSONDecodeError:
-                # If string can't be parsed as JSON, create empty dict
-                print(f"WARNING: LLM returned string for tool_args that couldn't be parsed as JSON: {tool_args_raw}")
-                tool_args = {}
-        else:
-            # For any other type, default to empty dict
-            print(f"WARNING: LLM returned non-dict, non-string for tool_args: {type(tool_args_raw)} = {tool_args_raw}")
-            tool_args = {}
-            
-        # Generate a unique tool call ID if not provided or if it's the default
-        tool_call_id = parsed.get("tool_call_id", "call_1")
-        if tool_call_id == "call_1" or not tool_call_id:
-            # Generate a unique ID based on timestamp and random number
-            import time
-            import random
-            tool_call_id = f"call_{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
     except Exception as e:
-        raise ValueError(f"LLM JSON parse error: {e}\nRaw content:\n{response.content}")
+        raise ValueError(f"Router must return strict JSON. Parse error: {e}\nRaw:\n{content}")
+
+    decision = parsed.get("decision", "").strip().lower()
+    if decision == "final":
+        return {
+            "messages": state["messages"],
+            "next_tool": None,
+            "tool_args": None,
+            "final_answer_ready": True,
+        }
+
+    if decision != "tool":
+        raise ValueError(f"Router returned unknown decision: {parsed!r}")
+
+    next_tool: str = parsed["next_tool"]
+    tool_args: dict = parsed.get("tool_args", {}) or {}
+    tool_call_id = str(parsed.get("tool_call_id") or f"call_{int(time.time()*1000)}_{random.randint(1000,9999)}")
 
     ai_with_tool_call = AIMessage(
         content="",
@@ -209,65 +184,56 @@ def llm_router(state: AgentState) -> AgentState:
         }]
     )
 
-    new_messages = state["messages"] + [ai_with_tool_call]
-
     return {
-        "messages": new_messages,
+        "messages": [ai_with_tool_call],
         "next_tool": next_tool,
         "tool_args": tool_args,
-        "final_answer_ready": (next_tool == "finish"),
+        "final_answer_ready": False,
     }
+
 
 
 def tool_executor(state: AgentState) -> AgentState:
     last_msg = state["messages"][-1]
-    if not isinstance(last_msg, AIMessage) or not last_msg.tool_calls:
-        raise ValueError("Expected tool_calls in last AI message")
+    if not isinstance(last_msg, AIMessage) or not getattr(last_msg, "tool_calls", None):
+        # Это логическая ошибка в графе: tool_executor должен вызываться
+        # только после решения роутера "decision: tool".
+        raise ValueError("tool_executor: expected AIMessage with tool_calls from router")
 
     tool_outputs: List[ToolMessage] = []
+    # Переход в финал теперь РЕШАЕТСЯ ТОЛЬКО роутером, поэтому всегда False
+    final_answer_ready = False
 
     for call in last_msg.tool_calls:
         tool_name = (call.get("name") or "").strip()
         tool_args = call.get("args") or {}
         call_id = call.get("id")
-        
-        # Ensure we have a valid call_id
-        if not call_id:
-            raise ValueError(f"Tool call missing ID: {call}")
 
-        if tool_name == "finish":
-            # Create a response for the finish tool call
-            tool_outputs.append(
-                ToolMessage(
-                    content="Task completed",
-                    tool_call_id=call_id,
-                    name=tool_name,
-                )
-            )
-            continue
+        if not call_id:
+            raise ValueError(f"tool_executor: tool call missing id: {call}")
 
         tool_obj = TOOL_REGISTRY.get(tool_name)
         if not tool_obj:
             result = f"[ERROR] Tool `{tool_name}` not found."
         else:
-            # result = tool_obj.invoke(tool_args)
-            result = tool_obj(**tool_args)
+            try:
+                result = tool_obj(**tool_args)
+            except Exception as e:
+                result = f"[ERROR] Tool execution failed: {str(e)}"
 
         tool_outputs.append(
             ToolMessage(
                 content=str(result),
                 tool_call_id=call_id,
-                name=tool_name,           # важно для новых версий
+                name=tool_name,
             )
         )
-    
-    new_messages = state["messages"] + tool_outputs
 
     return {
-        "messages": new_messages,
+        "messages": tool_outputs,
         "next_tool": None,
         "tool_args": None,
-        "final_answer_ready": False,
+        "final_answer_ready": final_answer_ready, 
     }
 
 
@@ -282,7 +248,7 @@ def final_answer_node(state: AgentState) -> AgentState:
     response: AIMessage = llm_final_answer.invoke(msgs)
     return {
         **state,
-        "messages": state["messages"] + [response],
+        "messages": [response]
     }
 
 
@@ -301,5 +267,6 @@ def build_agent_with_router():
     workflow.add_edge("tool_executor", "llm_router")
     workflow.add_edge("final_answer", END)
 
-    app = workflow.compile()
+    checkpointer = InMemorySaver()
+    app = workflow.compile(checkpointer=checkpointer)
     return app
