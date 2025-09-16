@@ -36,12 +36,12 @@ else:
 import matplotlib.pyplot as plt
 import sqlite3
 
-DB_NAME = os.getenv("DB_NAME", "retail_demo.db")
+DB_PATH = os.getenv("DB_PATH", "/Users/aziz/Documents/repos/shai-hackathon/data/data.db")
 
-# DB_NAME = "retail_demo.db"
 
 def get_db_conn():
-    return sqlite3.connect(f"/Users/aziz/Documents/repos/shai-hackathon/data/{DB_NAME}")
+    print(">> Using DB:", DB_PATH)
+    return sqlite3.connect(DB_PATH)
 
 
 def get_current_date() -> str:
@@ -76,7 +76,7 @@ def execute_query(sql: str) -> List[list[str]]:
     handle = ARTIFACTS.put(df)
 
     stats = [
-        f'Подробности: "handle {handle}"',
+        f'Artifact id(handle): "{handle}"',
     ]
     preview = df.tail(20)
 
@@ -144,113 +144,3 @@ def make_simple_plot(handle: str, x_col: str, y_col: str, x_vertical: str = None
 
     return f"Image path: {img_path}"
 
-
-
-
-# def get_sales() -> str:
-#     """Returns the sales data."""
-#     print(" - TOOL CALL: get_sales()")
-    
-#     return "Sales are 3000"
-
-
-# FAKE_SALES = pd.DataFrame([
-#     {"date": "2025-09-01", "sku": "A101", "amount": 1000, "qty": 5},
-#     {"date": "2025-09-01", "sku": "B202", "amount": 1500, "qty": 3},
-#     {"date": "2025-09-02", "sku": "A101", "amount": 700, "qty": 4},
-#     {"date": "2025-09-02", "sku": "C303", "amount": 1200, "qty": 6},
-#     {"date": "2025-09-03", "sku": "B202", "amount": 900, "qty": 2},
-#     {"date": "2025-09-04", "sku": "B202", "amount": 900, "qty": 2},
-#     {"date": "2025-09-05", "sku": "B202", "amount": 900, "qty": 2},
-#     {"date": "2025-09-06", "sku": "B202", "amount": 900, "qty": 2},
-#     {"date": "2025-09-07", "sku": "B202", "amount": 900, "qty": 2},
-#     {"date": "2025-09-08", "sku": "B202", "amount": 900, "qty": 2},
-#     {"date": "2025-09-09", "sku": "B202", "amount": 900, "qty": 2},
-# ])
-
-
-# def get_sales(date_from: str, date_to: str, sku: Optional[str] = None) -> dict:
-#     """
-#     Returns total sales amount and quantity for a given date range.
-#     Optionally filter by SKU code.
-#     Args:
-#         date_from: Start date (YYYY-MM-DD)
-#         date_to: End date (YYYY-MM-DD)
-#         sku: Optional SKU code to filter
-#     Returns:
-#         dict with total amount and quantity
-#     """
-#     print(f" - TOOL CALL: get_sales(date_from={date_from}, date_to={date_to}, sku={sku})")
-
-#     df = FAKE_SALES.copy()
-
-#     df["date"] = pd.to_datetime(df["date"])
-#     mask = (df["date"] >= pd.to_datetime(date_from)) & (df["date"] <= pd.to_datetime(date_to))
-#     df = df.loc[mask]
-
-#     if sku:
-#         df = df[df["sku"] == sku]
-
-#     df = df.groupby("date").agg({"amount": "sum", "qty": "sum"}).reset_index()
-#     handle = ARTIFACTS.put(df)
-
-#     stats = [
-#         f"Период: {date_from}—{date_to}.\n",
-#         f'amount_sum: {df["amount"].sum()}\n',
-#         f'qty_sum: {df["qty"].sum()}\n',
-#         f'amount_max: {df["amount"].max()}\n',
-#         f'qty_max: {df["qty"].max()}\n',
-#         f'amount_min: {df["amount"].min()}\n',
-#         f'qty_min: {df["qty"].min()}\n',
-#         f'amount_avg: {df["amount"].mean()}\n',
-#         f'qty_avg: {df["qty"].mean()}\n',
-#         f'Подробности: "artifact id {handle}"',
-#     ]
-
-#     preview = df.tail(5)
-
-#     return "".join(stats) + f"\n{preview}\n"
-
-
-
-# def get_top_skus(date_from: str, date_to: str, top_n: int = 5) -> dict:
-#     """
-#     Returns top-N SKUs by sales amount and quantity for a given date range.
-#     Args:
-#         date_from: Start date (YYYY-MM-DD)
-#         date_to: End date (YYYY-MM-DD)
-#         top_n: Number of top SKUs to return (default 5)
-#     Returns:
-#         dict with top-N SKUs and aggregated metrics
-#     """
-#     print(f" - TOOL CALL: get_top_skus(date_from={date_from}, date_to={date_to}, top_n={top_n})")
-
-#     df = FAKE_SALES.copy()
-#     df["date"] = pd.to_datetime(df["date"])
-
-#     mask = (df["date"] >= pd.to_datetime(date_from)) & (df["date"] <= pd.to_datetime(date_to))
-#     df = df.loc[mask]
-
-#     df_grouped = df.groupby("sku").agg({
-#         "amount": "sum",
-#         "qty": "sum"
-#     }).reset_index()
-
-
-#     df_sorted = df_grouped.sort_values(by="amount", ascending=False).head(top_n)
-
-#     handle = ARTIFACTS.put(df_sorted)
-
-#     stats = [
-#         f"Период: {date_from}—{date_to}.\n",
-#         f"Всего уникальных SKU: {df_grouped['sku'].nunique()}\n",
-#         f"Топ-{top_n} по amount:\n",
-#     ]
-#     for _, row in df_sorted.iterrows():
-#         stats.append(f"  SKU {row['sku']}: amount={row['amount']}, qty={row['qty']}\n")
-
-#     stats.append(f'Подробности: "artifact id {handle}"')
-
-#     preview = df_sorted.head(top_n)
-
-#     return "".join(stats) + f"\n{preview}\n"

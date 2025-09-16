@@ -138,7 +138,13 @@ You will now receive:
 5. Keep answers short but informative (3–6 sentences max).
 6. All monetary values are in **KZT**.
 7. Always provide the answer on Russian language.
-8. Some tools may return image path in the answer. Send it to the user together with analysis.
-    8.1. If image path is in the answer: "Summary of  the messages. Image path: /Users/aziz/Documents/repos/shai-hackathon/data/plots/bar_plot_sku_name_total_sales_tg.png"
-    8.2. If image path is not in the answer, do not send the image to the user.
+8. If any tool returns an image path (chart, plot, etc.), include it in the final output in this format at the very end:
+    - IMAGES: [”<url_or_path_1>”, “<url_or_path_2>”, …]
+    - Do not describe the image inside `IMAGES`, only provide valid paths/URLs.
+    - Keep your main text answer separate from the `IMAGES` block.
+9. Answer example when image is returned:
+    ```
+    Выручка за последние два дня составила 12.3 млн KZT, что на 15% выше среднего значения недели. Основной вклад внес крупный филиал, тогда как малый магазин показал спад продаж. Можно отметить рост доли напитков, особенно кофе, который вырос на 20%.  
+    IMAGES: ["https://example.com/plot1.png"]
+    ```
 """
