@@ -8,6 +8,11 @@ import json, hashlib
 import os
 from app.artifacts import ARTIFACTS
 from typing import List, Tuple, Optional
+from dotenv import load_dotenv
+from darts import TimeSeries
+from darts.models import TBATS, ExponentialSmoothing
+
+load_dotenv()
 
 MAX_INLINE_ROWS = 10
 STATIC_DIR = os.getenv("STATIC_DIR", "static")
@@ -153,3 +158,60 @@ def make_simple_plot(
     img_path = os.path.abspath(path)
 
     return f"Image path: {img_path}"
+
+
+def get_forecast(handle: str, col_name: str, horizon: int = 14) -> str:
+    """
+    Returns a forecast of the column in a dataframe.
+    Args:
+        handle: The id of the dataframe artifact. Should contain order_date and col_name columns.
+        col_name: The name of the column to forecast. Should be a numeric column.
+    Returns:
+        Dataframe with fact and forecast. Can be used for plots.
+    """
+    print(f" - TOOL CALL: get_forecast({handle}, {col_name}, {horizon})")
+
+    df = ARTIFACTS.get(handle)
+    if df is None or df.empty:
+        return "Artifact not found or empty/expired."
+
+    if col_name not in df.columns:
+        return "Column not found"
+
+    df = (
+        df.groupby(["order_date"], as_index=False)
+        .agg({f"{col_name}": "sum"})
+        .sort_values(by="order_date")
+    )
+    df["order_date"] = pd.to_datetime(df["order_date"])
+    series = TimeSeries.from_dataframe(
+        df, time_col="order_date", value_cols=col_name, freq="D"
+    )
+    # model = TBATS(use_trend=True, season_length=[7, 365])
+    model = ExponentialSmoothing()
+    model.fit(series)
+
+    forecast = pd.DataFrame(
+        {
+            "order_date": pd.date_range(
+                df["order_date"].max() + pd.Timedelta(days=1), periods=horizon, freq="D"
+            )
+        }
+    )
+    forecast[col_name] = model.predict(horizon).values().flatten()
+    res = pd.concat([df, forecast])
+
+    handle = ARTIFACTS.put(res)
+
+    stats = [
+        f'Artifact id(handle): "{handle}"',
+        f"Forecast: {res.tail(20)}",
+        f'Forecast starting date: {forecast["order_date"].min()}',
+        f'Forecast ending date: {forecast["order_date"].max()}',
+        f"Forecast horizon: {horizon}",
+        f"Forecast column: {col_name}",
+        f'Fact starting date: {df["order_date"].min()}',
+        f'Fact ending date: {df["order_date"].max()}',
+    ]
+
+    return f"".join(stats)

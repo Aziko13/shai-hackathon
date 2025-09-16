@@ -9,6 +9,7 @@ TOOL_REGISTRY: Dict[str, Any] = {
     "execute_query": tools.execute_query,
     "give_column_summary": tools.give_column_summary,
     "make_simple_plot": tools.make_simple_plot,
+    "get_forecast": tools.get_forecast,
 }
 
 
@@ -114,6 +115,8 @@ Rules:
 - ALWAYS first explore available tables and their schemas before writing SQL queries.
 - ALWAYS use get_current_date tool to get the current date
 - Do not use date('now', '-n days') function, use get_current_date tool instead.
+- Use get_forecast tool to get a forecast. Pass artifact handle, column name and horizon. Dataframe should contain order_date and column name.
+- Always provide the forecast starting date as vertical line in the plot.
 """
 
 FINAL_ANSWER_PROMPT = """

@@ -28,6 +28,7 @@ import app.prompts as prompts
 
 graph = agent.build_agent_with_router()
 
+
 def format_messages_string(messages: List[Any]) -> str:
     """Format messages into a single string for analysis."""
     return "\n".join(message.pretty_repr() for message in messages)
@@ -52,6 +53,7 @@ def create_response_test_cases():
     print(f"Created {len(test_cases)} test cases")
     return test_cases
 
+
 # Агент
 # agent_model = os.getenv("AGENT_MODEL")
 # agent_api_base = os.getenv("AGENT_API_BASE")
@@ -73,12 +75,12 @@ criteria_eval_llm = init_chat_model(
 )
 criteria_eval_structured_llm = criteria_eval_llm.with_structured_output(CriteriaGrade)
 
+
 @pytest.mark.langsmith(output_keys=["criteria"])
 @pytest.mark.parametrize("req, success_criteria", create_response_test_cases())
 def test_response_criteria_evaluation(req, success_criteria):
     """Test if a response meets the specified criteria."""
     t.log_inputs({"module": "agent e2e", "test": "test_response_criteria_evaluation"})
-
 
     # Run the agent
     msg = {"messages": [{"role": "user", "content": req}]}
