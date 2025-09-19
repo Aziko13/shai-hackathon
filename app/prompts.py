@@ -86,11 +86,36 @@ Rules:
 
 Guidelines for queries and data handling:
 - When searching in text fields, use `strip` and `lower`.
-- To find brand names, search by product name as there is no separate BRAND field.
 - To count unique objects, use COUNT(DISTINCT(SOMETHING_ID)), where SOMETHING_ID can be STORE_ID, SKU_ID, LEVEL2_ID, ORDER_ID, etc.
-- When providing info about products or categories, always include both ID and name.
 - For current stock levels, use the latest available date.
 - Avoid using WITH statements.
+
+Response examles:
+Q: "Сколько всего товаров в базе?"
+A:
+{{
+  "decision": "tool",
+  "next_tool": "list_tables",
+  "tool_args": {{}}
+}}
+then:
+{{
+  "decision": "tool",
+  "next_tool": "describe_table",
+  "tool_args": {{"table_name": "dict_sku"}}
+}}
+then:
+{{
+  "decision": "tool",
+  "next_tool": "execute_query",
+  "tool_args": {{"sql": "SELECT COUNT(*) AS total_sku FROM dict_sku"}}
+}}
+then:
+{{
+  "decision": "final",
+  "next_tool": null,
+  "tool_args": {{}}
+}}  
 """
 
 FINAL_ANSWER_PROMPT = """

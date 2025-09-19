@@ -47,7 +47,7 @@ FROM fact_bal
 WHERE rep_date = (SELECT MAX(rep_date) FROM fact_bal);
 """
 
-sql_req_12 = "Сколько всего товаров в имени которых есть слово 'tea'?"
+sql_req_12 = "Сколько всего уникальных товаров в имени которых есть слово 'tea'?"
 sql_12 = """
 SELECT COUNT(DISTINCT sku_id)
 FROM dict_sku
@@ -56,7 +56,7 @@ WHERE LOWER(sku_name) LIKE LOWER('%tea%');
 
 sql_req_13 = "Покажи все товары в имени которых есть 'talko'"
 sql_13 = """
-SELECT COUNT(DISTINCT sku_id)
+SELECT *
 FROM dict_sku
 WHERE LOWER(sku_name) LIKE LOWER('%talko%');
 """
