@@ -1,5 +1,5 @@
 pandas==2.3.2
-numpy==2.3.3
+numpy==1.24.3
 langgraph==0.6.7
 langchain==0.3.27
 matplotlib==3.10.6
@@ -7,4 +7,5 @@ python-dotenv==1.1.1
 pydantic==2.11.7
 langchain-openai==0.3.33
 python-telegram-bot==22.4
+darts==0.28.0
 
