@@ -88,5 +88,12 @@ if __name__ == "__main__":
         )
         eval_results.append(eval_result)
 
-        print([e.exec_accuracy for e in eval_results])
-        print([e.exact_match for e in eval_results])
+        print(req)
+        print(golden_sql)
+        print(eval_result.exec_accuracy)
+        print(eval_result.exact_match)
+        print("-"*100)
+
+    
+    print([e.exec_accuracy for e in eval_results])
+    print([e.exact_match for e in eval_results])
