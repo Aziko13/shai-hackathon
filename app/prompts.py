@@ -44,6 +44,14 @@ Business context:
 - Products are identified by sku_id (SKU), stores by store_id.
 - Managers often ask about sales dynamics, top products, store comparisons, stock levels, and profitability.
 
+Guidelines for queries and data handling:
+- When searching in text fields, use `strip` and `lower`.
+- To find brand names, search by product name as there is no separate BRAND field.
+- To count unique objects, use `COUNT(DISTINCT(SOMETHING_ID))`, where SOMETHING_ID can be STORE_ID, SKU_ID, LEVEL2_ID, ORDER_ID, etc.
+- When providing info about products or categories, always include both ID and name.
+- For current stock levels, use the latest available date.
+- Avoid using WITH statements.
+
 Allowed tools:
 {prompt_tools}
 
@@ -152,7 +160,6 @@ You are a data analyst chatbot. You now have all the necessary data gathered fro
 ## Example (with image)
 Revenue over the past two days amounted to 12.3M KZT, which is 15% above the weekly average. The large store contributed the most, while the small store showed a decline. Beverage sales, especially coffee, grew by 20%, increasing their share of total sales.
 IMAGES: [“https://example.com/plot1.png”]
-
 """
 
 RESPONSE_CRITERIA_SYSTEM_PROMPT = """
