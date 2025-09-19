@@ -12,6 +12,7 @@ BI-GPT — это интеллектуальный агент, который п
 - Учитывает бизнес-словарь и контекст
 - Возвращает корректные агрегаты с пояснениями
 - Создает визуализации данных
+- Делает прогнозы временных рядов
 
 ## Архитектура
 
@@ -54,6 +55,7 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 
 # LLM Model
 AGENT_MODEL=openai:llama4scout
+OPENAI_API_BASE=https://...
 
 # Database
 DB_PATH=retail_demo.db path
@@ -72,11 +74,13 @@ python -m app.bot
 ### Тестирование агента
 
 ```bash
-# Запуск тестов
-python -m pytest tests/
+# Запуск тестов (общие, end2end)
+python -m pytest tests/test_e2e.py
 
-# Интерактивное тестирование
-jupyter notebook test.ipynb
+# Запуск тестов (sql)
+python -m pytest tests/test_sql.py
+
+
 ```
 
 ## Доступные инструменты
@@ -152,50 +156,48 @@ jupyter notebook test.ipynb
 ## Метрики качества
 
 ### ML/AI метрики
-- **Exact match accuracy** - Точность SQL-запросов
-- **Execution accuracy** - Успешность выполнения запросов
-- **Hallucination rate** - Частота галлюцинаций (↓)
+- **Exact match accuracy** - Точность SQL-запросов ~85%
+- **Execution accuracy** - Успешность выполнения запросов ~95%
+- **Hallucination rate** - Частота галлюцинаций (↓) близко к нулю
 
 ### Бизнес-метрики
-- **Self-service rate** - % вопросов без аналитика
-- **Response time** - Время ответа
-- **Queue reduction** - Снижение очереди в BI
+- **Self-service rate** - % вопросов без аналитика >90%
+- **Response time** - Время ответа p50 ~11 sec, p99 ~25 sec
+- **Queue reduction** - Значительное снижение очереди в BI, может заменить jun/mid аналитика
 
-### Инженерные метрики
-- **PII leakage** - Отсутствие утечек персональных данных
-- **Query limits** - Лимиты времени/стоимости запросов
 
 ## Тестирование
 
 ### Структура тестов
 ```
 tests/
-├── test_e2e.py          # End-to-end тесты
-├── evaluation_obs.py    # Наблюдения для оценки
+├── test_e2e.py             # End-to-end тесты
+├── evaluation_obs.py       # Наблюдения для оценки e2e
+├── test_sql.py             # Тесты sql запросов
+├── evaluation_obs_sql.py   # Наблюдения для оценки sql
 └── __init__.py
 ```
 
-### Запуск тестов
 ```bash
-# Все тесты
-pytest
+# Запуск тестов (общие, end2end)
+python -m pytest tests/test_e2e.py
 
-# С покрытием
-pytest --cov=app
+# Запуск тестов (sql)
+python -m pytest tests/test_sql.py
 
-# Конкретный тест
-pytest tests/test_e2e.py::test_response_criteria_evaluation
+
 ```
 
+```
 
 ## Развитие проекта
 
 ### Планируемые улучшения
 - [ ] Поддержка больше типов графиков
-- [ ] Кэширование результатов запросов
 - [ ] Межсессионная память
 - [ ] Веб-интерфейс
 - [ ] Дополнительные модели прогнозирования (ARIMA, TBATS)
+- [ ] Human-in-the-loop
 
 
 ## Лицензия

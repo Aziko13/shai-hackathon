@@ -208,7 +208,6 @@ ADDITIONAL CONTEXT FOR THIS DOMAIN:
 """
 
 
-
 RESPONSE_CRITERIA_SYSTEM_PROMPT_SQL = """
 You are an evaluator of SQL generation for a natural language to SQL agent.
 
@@ -246,4 +245,3 @@ Output:
   "explanation": "Both queries count the total number of stores from the same table. The only difference is the alias, which should be ignored."
 }
 """
-

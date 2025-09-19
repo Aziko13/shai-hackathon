@@ -274,7 +274,7 @@ def build_agent_with_router():
     workflow.add_edge("tool_executor", "llm_router")
     workflow.add_edge("final_answer", END)
 
-    checkpointer=TruncatingInMemorySaver(keep_last=20)
+    checkpointer = TruncatingInMemorySaver(keep_last=20)
     app = workflow.compile(checkpointer=checkpointer)
-    
+
     return app
