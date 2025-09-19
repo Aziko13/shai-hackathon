@@ -122,7 +122,6 @@ AGENT_MODEL = os.getenv("AGENT_MODEL", "openai:llama4scout")
 
 
 class AgentState(TypedDict):
-    # messages: List[BaseMessage] # List of messages
     messages: Annotated[Sequence[BaseMessage], add_messages]
     next_tool: Optional[str]
     tool_args: Optional[dict]
@@ -275,6 +274,7 @@ def build_agent_with_router():
     workflow.add_edge("tool_executor", "llm_router")
     workflow.add_edge("final_answer", END)
 
-    checkpointer = InMemorySaver()
+    checkpointer=TruncatingInMemorySaver(keep_last=20)
     app = workflow.compile(checkpointer=checkpointer)
+    
     return app
