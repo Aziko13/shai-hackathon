@@ -1,6 +1,7 @@
 import json
 import re
-from typing import TypedDict, Optional, List, Dict, Any
+from typing import TypedDict, Optional, List, Dict, Any, Literal
+from pydantic import BaseModel, Field
 import os
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
@@ -130,43 +131,35 @@ class AgentState(TypedDict):
 
 LLM_ROUTER_PROMPT = prompts.LLM_ROUTER_PROMPT
 FINAL_ANSWER_PROMPT = prompts.FINAL_ANSWER_PROMPT
-
-
-# ---- РЕЕСТР ТУЛОВ (важно: ключ = имя в JSON от роутера)
 TOOL_REGISTRY = prompts.TOOL_REGISTRY
 
-# ---- МОДЕЛИ
-llm = init_chat_model(
-    AGENT_MODEL,
-    temperature=0,
-    model_kwargs={"response_format": {"type": "json_object"}},
-)
-llm_final_answer = init_chat_model(AGENT_MODEL, temperature=0)
 
+
+class RouterDecision(BaseModel):
+    decision: Literal["tool", "final"]
+    next_tool: Optional[str] = None
+    tool_args: Optional[Dict[str, Any]] = Field(default=None)
+
+
+_router_llm = init_chat_model(AGENT_MODEL, temperature=0)
+router_llm = _router_llm.with_structured_output(RouterDecision, method="function_calling")
+
+llm_final_answer = init_chat_model(AGENT_MODEL, temperature=0)
 
 system_msg_router = SystemMessage(content=LLM_ROUTER_PROMPT)
 system_msg_final = SystemMessage(content=FINAL_ANSWER_PROMPT)
 
 
+def _make_tool_call_id() -> str:
+    return f"call_{int(time.time()*1000)}_{random.randint(1000,9999)}"
+
 def llm_router(state: AgentState) -> AgentState:
     msgs = [m for m in state["messages"] if not isinstance(m, SystemMessage)]
     msgs.insert(0, system_msg_router)
 
-    response: AIMessage = llm.invoke(msgs)
-    content = (response.content or "").strip()
+    dec: RouterDecision = router_llm.invoke(msgs)
 
-    m = re.search(r"\{.*\}", content, flags=re.DOTALL)
-    json_str = m.group(0) if m else content
-
-    try:
-        parsed = json.loads(json_str)
-    except Exception as e:
-        raise ValueError(
-            f"Router must return strict JSON. Parse error: {e}\nRaw:\n{content}"
-        )
-
-    decision = parsed.get("decision", "").strip().lower()
-    if decision == "final":
+    if dec.decision == "final":
         return {
             "messages": state["messages"],
             "next_tool": None,
@@ -174,24 +167,22 @@ def llm_router(state: AgentState) -> AgentState:
             "final_answer_ready": True,
         }
 
-    if decision != "tool":
-        raise ValueError(f"Router returned unknown decision: {parsed!r}")
-
-    next_tool: str = parsed["next_tool"]
-    tool_args: dict = parsed.get("tool_args", {}) or {}
-    tool_call_id = str(
-        parsed.get("tool_call_id")
-        or f"call_{int(time.time()*1000)}_{random.randint(1000,9999)}"
-    )
+    tool_name = (dec.next_tool or "").strip()
+    if not tool_name:
+        raise ValueError("Router: decision='tool' but 'next_tool' is empty.")
+    if tool_name not in TOOL_REGISTRY:
+        raise ValueError(f"Router: unknown tool '{tool_name}'. Known: {list(TOOL_REGISTRY)}")
+    tool_args = dec.tool_args or {}
+    tool_call_id = _make_tool_call_id()
 
     ai_with_tool_call = AIMessage(
         content="",
-        tool_calls=[{"id": tool_call_id, "name": next_tool, "args": tool_args}],
+        tool_calls=[{"id": tool_call_id, "name": tool_name, "args": tool_args}],
     )
 
     return {
         "messages": [ai_with_tool_call],
-        "next_tool": next_tool,
+        "next_tool": tool_name,
         "tool_args": tool_args,
         "final_answer_ready": False,
     }
@@ -200,15 +191,10 @@ def llm_router(state: AgentState) -> AgentState:
 def tool_executor(state: AgentState) -> AgentState:
     last_msg = state["messages"][-1]
     if not isinstance(last_msg, AIMessage) or not getattr(last_msg, "tool_calls", None):
-        # Это логическая ошибка в графе: tool_executor должен вызываться
-        # только после решения роутера "decision: tool".
-        raise ValueError(
-            "tool_executor: expected AIMessage with tool_calls from router"
-        )
-
+        raise ValueError("tool_executor: expected AIMessage with tool_calls from router")
+        
     tool_outputs: List[ToolMessage] = []
-    # Переход в финал теперь РЕШАЕТСЯ ТОЛЬКО роутером, поэтому всегда False
-    final_answer_ready = False
+
 
     for call in last_msg.tool_calls:
         tool_name = (call.get("name") or "").strip()
@@ -228,18 +214,14 @@ def tool_executor(state: AgentState) -> AgentState:
                 result = f"[ERROR] Tool execution failed: {str(e)}"
 
         tool_outputs.append(
-            ToolMessage(
-                content=str(result),
-                tool_call_id=call_id,
-                name=tool_name,
-            )
+            ToolMessage(content=str(result), tool_call_id=call_id, name=tool_name)
         )
 
     return {
         "messages": tool_outputs,
         "next_tool": None,
         "tool_args": None,
-        "final_answer_ready": final_answer_ready,
+        "final_answer_ready": False,
     }
 
 
@@ -257,24 +239,17 @@ def final_answer_node(state: AgentState) -> AgentState:
 
 def build_agent_with_router():
     workflow = StateGraph(AgentState)
-
     workflow.add_node("llm_router", llm_router)
     workflow.add_node("tool_executor", tool_executor)
     workflow.add_node("final_answer", final_answer_node)
 
     workflow.add_edge(START, "llm_router")
-    workflow.add_conditional_edges(
-        "llm_router",
-        route,
-        {
-            "tool_executor": "tool_executor",
-            "final_answer": "final_answer",
-        },
-    )
+    workflow.add_conditional_edges("llm_router", route, {
+        "tool_executor": "tool_executor",
+        "final_answer": "final_answer",
+    })
     workflow.add_edge("tool_executor", "llm_router")
     workflow.add_edge("final_answer", END)
 
     checkpointer = TruncatingInMemorySaver(keep_last=20)
-    app = workflow.compile(checkpointer=checkpointer)
-
-    return app
+    return workflow.compile(checkpointer=checkpointer)

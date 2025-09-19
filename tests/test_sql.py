@@ -2,6 +2,9 @@ import sys
 from typing import List, Any
 from pydantic import BaseModel, Field
 from langchain.chat_models import init_chat_model
+import numpy as np
+from langchain.schema import AIMessage
+
 
 import os
 from dotenv import load_dotenv
@@ -60,16 +63,31 @@ if __name__ == "__main__":
     )
 
     eval_results = []
-
-    for test_case in test_cases:
+    
+    for i,test_case in enumerate(test_cases):
+        print(f"Test case {i+1} of {len(test_cases)}")
         req = test_case[0]
         golden_sql = test_case[1]
 
         msg = {"messages": [{"role": "user", "content": req}]}
         config = {"configurable": {"thread_id": str(req)}}
-
         result = graph.invoke(msg, config)
-        all_messages_str = format_messages_string(result["messages"])
+
+        exec_calls = [
+            m for m in result["messages"]
+            if isinstance(m, AIMessage)
+            and getattr(m, "tool_calls", None)
+            and m.tool_calls
+            and (m.tool_calls[0].get("name") == "execute_query")
+        ]
+
+        if not exec_calls:
+            raise ValueError("No final execute_query call found for this request.")
+
+        last_exec = exec_calls[-1]
+        agent_sql = last_exec.tool_calls[0]["args"].get("sql", "").strip()
+        if not agent_sql:
+            raise ValueError("Final execute_query call missing 'sql' arg.")
 
         eval_result = criteria_eval_structured_llm.invoke(
             [
@@ -79,9 +97,9 @@ if __name__ == "__main__":
                 },
                 {
                     "role": "user",
-                    "content": f"""\n\n Request: {req}
-                                Tool calls: \n\n {all_messages_str} 
-                                \n\n Golden SQL: {golden_sql} \n\n 
+                    "content": f"""Request: {req}
+                                 Agent SQL: {agent_sql} 
+                                 Golden SQL: {golden_sql} 
                     Evaluate whether the assistant's response meets the criteria and provide justification for your evaluation.""",
                 },
             ]
@@ -97,3 +115,8 @@ if __name__ == "__main__":
     
     print([e.exec_accuracy for e in eval_results])
     print([e.exact_match for e in eval_results])
+
+    print(np.mean([e.exec_accuracy for e in eval_results]))
+    print(np.mean([e.exact_match for e in eval_results]))
+
+
