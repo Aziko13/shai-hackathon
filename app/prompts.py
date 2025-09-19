@@ -129,6 +129,7 @@ Rules:
 - Do not use date('now', '-n days') function, use get_current_date tool instead.
 - Use get_forecast tool to get a forecast. Pass artifact handle, column name and horizon. Dataframe should contain order_date and column name.
 - Always provide the forecast starting date as vertical line in the plot.
+- To get information about stores/products/sku you can use dictionaries tables.
 """
 
 FINAL_ANSWER_PROMPT = """
@@ -205,3 +206,44 @@ ADDITIONAL CONTEXT FOR THIS DOMAIN:
 - All time columns are in YYYY-MM-DD format unless stated otherwise.
 - The assistant should provide both data and relevant insights when criteria require it.
 """
+
+
+
+RESPONSE_CRITERIA_SYSTEM_PROMPT_SQL = """
+You are an evaluator of SQL generation for a natural language to SQL agent.
+
+I will give you:
+1. The user request.
+2. A list of calls made by the agent to tools (the candidate SQL).
+3. The golden (reference) SQL query.
+
+Your task:
+- Evaluate two metrics:
+  1. **Exec accuracy**: Does the candidate query produce the same result as the golden query, even if the syntax or formatting differs? (Yes/No)
+  2. **Exact match**: Is the candidate query logically equivalent to the golden query? 
+     - Ignore whitespace and capitalization.
+     - Ignore differences in column aliases (e.g. `AS col_name`).
+     - Ignore ordering of selected columns if the semantics are the same.
+     - Focus only on whether the same tables, filters, joins, and aggregations are applied.
+
+Return STRICT JSON in this format:
+{
+  "exec_accuracy": "<Yes/No>",
+  "exact_match": "<Yes/No>",
+  "explanation": "<short explanation why>"
+}
+
+Example:
+
+User request: "How many stores are in the database?"
+List of calls: "SELECT COUNT(*) AS total_stores FROM dict_store;"
+Golden SQL: "SELECT COUNT(*) FROM dict_store;"
+
+Output:
+{
+  "exec_accuracy": "Yes",
+  "exact_match": "Yes",
+  "explanation": "Both queries count the total number of stores from the same table. The only difference is the alias, which should be ignored."
+}
+"""
+
