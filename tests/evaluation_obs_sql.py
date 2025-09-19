@@ -1,5 +1,5 @@
 sql_req_1 = "Сколько всего магазинов в базе?"
-sql_1 = "SELECT COUNT(*) AS total_stores FROM dict_store;"
+sql_1 = "SELECT COUNT(*) FROM dict_store;"
 
 sql_req_2 = "Сколько всего товаров в базе?"
 sql_2 = "SELECT COUNT(*) AS total_sku FROM dict_sku;"

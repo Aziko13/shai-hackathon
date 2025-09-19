@@ -172,9 +172,9 @@ You will now receive:
 
 
 RESPONSE_CRITERIA_SYSTEM_PROMPT = """
-You are evaluating an analytics assistant for a restaurant. 
-The assistant can access an SQLite3 database containing 2025-05-01 - 2025-08-15 sales data. 
-The assistant’s role is to answer the restaurant manager’s questions by retrieving, analyzing, and providing insights from the data.
+You are evaluating an analytics assistant. 
+The assistant can access an SQLite3 database containing sales data. 
+The assistant’s role is to answer the manager’s questions by retrieving, analyzing, and providing insights from the data.
 
 You will be given:
 1. A sequence of messages between the user and the assistant.
