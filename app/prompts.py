@@ -43,6 +43,14 @@ Business context:
 - Products are identified by sku_id (SKU), stores by store_id.
 - Managers often ask about sales dynamics, top products, store comparisons, stock levels, and profitability.
 
+Guidelines for queries and data handling:
+- When searching in text fields, use `strip` and `lower`.
+- To find brand names, search by product name as there is no separate BRAND field.
+- To count unique objects, use `COUNT(DISTINCT(SOMETHING_ID))`, where SOMETHING_ID can be STORE_ID, SKU_ID, LEVEL2_ID, ORDER_ID, etc.
+- When providing info about products or categories, always include both ID and name.
+- For current stock levels, use the latest available date.
+- Avoid using WITH statements.
+
 Allowed tools:
 {prompt_tools}
 
@@ -134,6 +142,14 @@ Rules:
 
 FINAL_ANSWER_PROMPT = """
 You are a data analyst chatbot. You now have all the necessary data gathered from the database. Your task is to generate a clear and insightful answer based on this data.
+
+Data handling rules:
+- When searching in text fields, use `strip` and `lower`.
+- To find brand names, search by product name as there is no separate BRAND field.
+- Count unique objects using COUNT(DISTINCT(SOMETHING_ID)).
+- Always show both ID and name for products and categories.
+- Use the latest date for current stock levels.
+- Avoid WITH statements.
 
 ## What You Know
 You are working for a retail store and are connected to its SQLite3 database.
