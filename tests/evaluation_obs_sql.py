@@ -5,7 +5,9 @@ sql_req_2 = "Сколько всего товаров в базе?"
 sql_2 = "SELECT COUNT(*) AS total_sku FROM dict_sku;"
 
 sql_req_3 = "Покажи минимальную и максимальную дату продаж"
-sql_3 = "SELECT MIN(order_date) AS min_date, MAX(order_date) AS max_date FROM fact_sales;"
+sql_3 = (
+    "SELECT MIN(order_date) AS min_date, MAX(order_date) AS max_date FROM fact_sales;"
+)
 
 sql_req_4 = "Покажи первые 10 записей из таблицы fact_bal"
 sql_4 = "SELECT * FROM fact_bal LIMIT 10;"
@@ -17,7 +19,9 @@ sql_req_6 = "Покажи общую сумму продаж в тенге за 
 sql_6 = "SELECT SUM(sales_tg) AS total_revenue FROM fact_sales;"
 
 sql_req_7 = "Покажи количество продаж в штуках по каждому магазину"
-sql_7 = "SELECT store_id, SUM(sales_unit) AS total_units FROM fact_sales GROUP BY store_id;"
+sql_7 = (
+    "SELECT store_id, SUM(sales_unit) AS total_units FROM fact_sales GROUP BY store_id;"
+)
 
 sql_req_8 = "Покажи топ-5 товаров по выручке"
 sql_8 = """
@@ -50,17 +54,6 @@ sql_reqsuests = [
     sql_req_8,
     sql_req_9,
     sql_req_10,
-]               
-
-sql_answers = [
-    sql_1,
-    sql_2,
-    sql_3,
-    sql_4,
-    sql_5,
-    sql_6,
-    sql_7,
-    sql_8,
-    sql_9,
-    sql_10
 ]
+
+sql_answers = [sql_1, sql_2, sql_3, sql_4, sql_5, sql_6, sql_7, sql_8, sql_9, sql_10]

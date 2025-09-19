@@ -18,6 +18,7 @@ def format_messages_string(messages: List[Any]) -> str:
     """Format messages into a single string for analysis."""
     return "\n".join(message.pretty_repr() for message in messages)
 
+
 evaluator_model = os.getenv("EVALUATOR_MODEL")
 evaluator_api_base = os.getenv("EVALUATOR_API_BASE")
 evaluator_api_key = os.getenv("EVALUATOR_API_KEY")
@@ -41,24 +42,24 @@ class SQLEvaluation(BaseModel):
     )
 
 
-
 if __name__ == "__main__":
-    
+
     test_cases = []
     for req, criteria in zip(e_sql.sql_reqsuests, e_sql.sql_answers):
         test_cases.append((req, criteria))
 
     graph = agent.build_agent_with_router()
-    
+
     criteria_eval_llm = init_chat_model(
         evaluator_model,
         openai_api_base=evaluator_api_base,
         openai_api_key=evaluator_api_key,
     )
-    criteria_eval_structured_llm = criteria_eval_llm.with_structured_output(SQLEvaluation)
+    criteria_eval_structured_llm = criteria_eval_llm.with_structured_output(
+        SQLEvaluation
+    )
 
     eval_results = []
-
 
     for test_case in test_cases:
         req = test_case[0]
@@ -72,7 +73,10 @@ if __name__ == "__main__":
 
         eval_result = criteria_eval_structured_llm.invoke(
             [
-                {"role": "system", "content": prompts.RESPONSE_CRITERIA_SYSTEM_PROMPT_SQL},
+                {
+                    "role": "system",
+                    "content": prompts.RESPONSE_CRITERIA_SYSTEM_PROMPT_SQL,
+                },
                 {
                     "role": "user",
                     "content": f"""\n\n Request: {req}
