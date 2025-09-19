@@ -10,6 +10,7 @@ TOOL_REGISTRY: Dict[str, Any] = {
     "give_column_summary": tools.give_column_summary,
     "make_simple_plot": tools.make_simple_plot,
     "get_forecast": tools.get_forecast,
+    "update_db": tools.update_db,
 }
 
 
@@ -97,7 +98,14 @@ A:
   "tool_call_id": "call_1"
 }}
 
-
+Q: "Delete table fact_sales from the database"
+A:
+{{
+  "decision": "tool",
+  "next_tool": "update_db",
+  "tool_args": {{"sql": "DELETE FROM fact_sales"}},
+  "tool_call_id": "call_1"
+}}
 
 Rules:
 - JSON only, no markdown, no extra text.
@@ -110,6 +118,7 @@ Rules:
 - ALWAYS return a **decision**.
 - ALWAYS first explore available tables and their schemas before writing SQL queries.
 - ALWAYS use get_current_date tool to get the current date
+- If you need to update/amend/insert/delete/alter any data in the database, use update_db tool.
 - Do not use date('now', '-n days') function, use get_current_date tool instead.
 - Use get_forecast tool to get a forecast. Pass artifact handle, column name and horizon. Dataframe should contain order_date and column name.
 - Always provide the forecast starting date as vertical line in the plot.

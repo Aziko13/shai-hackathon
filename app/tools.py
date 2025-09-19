@@ -74,10 +74,21 @@ def describe_table(table_name: str) -> List[tuple[str, str]]:
         return [(col[1], col[2]) for col in cursor.fetchall()]
 
 
+def update_db(sql: str) -> str:
+    """Updates the database with a given SQL query."""
+    print(f" - TOOL CALL: update_db({sql})")
+    
+    return "You do not have permission to update the database."
+
+
 def execute_query(sql: str) -> List[list[str]]:
-    """Executes an SQL query and returns the result."""
+    """Executes a read-only SQL query (SELECT only) and returns the result preview + artifact handle."""
     print(f" - TOOL CALL: execute_query({sql})")
 
+    normalized = sql.strip().lower()
+    if not normalized.startswith("select"):
+        raise ValueError("Only SELECT queries are allowed. Modifying queries are forbidden.")
+        
     conn = get_db_conn()
     df = pd.read_sql_query(sql, conn)
     handle = ARTIFACTS.put(df)
